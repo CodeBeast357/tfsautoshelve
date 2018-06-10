@@ -24,6 +24,7 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
         ///     Gets the embedded file identified by the resource name, and converts the
         ///     file into a string.
         /// </summary>
+        /// <param name="assembly"></param>
         /// <param name="resourceName">In VS, is DefaultNamespace.FileName?</param>
         /// <returns></returns>
         public static string GetEmbeddedStringResource(Assembly assembly, string resourceName)
@@ -55,7 +56,9 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
 
         /// <summary>
         /// </summary>
+        /// <param name="assembly"></param>
         /// <param name="embeddedResourceName"></param>
+        /// <param name="fileName"></param>
         /// <param name="baseFileName"></param>
         /// <param name="fileExtension"></param>
         /// <returns></returns>
@@ -109,14 +112,8 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
             }
             finally
             {
-                if (fs != null)
-                {
-                    fs.Close();
-                }
-                if (sw != null)
-                {
-                    sw.Close();
-                }
+                fs?.Close();
+                sw?.Close();
             }
         }
 
@@ -210,6 +207,7 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
         /// <summary>
         ///     Closes the currently open solution (if any), and creates a new solution with the given name.
         /// </summary>
+        /// <param name="directory"></param>
         /// <param name="solutionName">Name of new solution.</param>
         public void CreateEmptySolution(string directory, string solutionName)
         {
@@ -252,8 +250,7 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
         {
             // Get solution service
             var solutionService = (IVsSolution) VsIdeTestHostContext.ServiceProvider.GetService(typeof (IVsSolution));
-            object projectCount;
-            solutionService.GetProperty((int) __VSPROPID.VSPROPID_ProjectCount, out projectCount);
+            solutionService.GetProperty((int)__VSPROPID.VSPROPID_ProjectCount, out object projectCount);
             return (int) projectCount;
         }
 
@@ -267,6 +264,7 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
         /// <param name="projectName">Name of new project.</param>
         /// <param name="templateName">Name of project template to use</param>
         /// <param name="language">language</param>
+        /// <param name="exclusive"></param>
         /// <returns>New project.</returns>
         public void CreateProjectFromTemplate(string projectName, string templateName, string language, bool exclusive)
         {
@@ -323,17 +321,13 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
             var runningDocumentTableService =
                 (IVsRunningDocumentTable)
                     VsIdeTestHostContext.ServiceProvider.GetService(typeof (IVsRunningDocumentTable));
-            uint docCookie;
-            IntPtr docData;
-            IVsHierarchy hierarchy;
-            uint itemId;
             runningDocumentTableService.FindAndLockDocument(
-                (uint) _VSRDTFLAGS.RDT_NoLock,
+                (uint)_VSRDTFLAGS.RDT_NoLock,
                 documentMoniker,
-                out hierarchy,
-                out itemId,
-                out docData,
-                out docCookie);
+                out IVsHierarchy hierarchy,
+                out uint itemId,
+                out IntPtr docData,
+                out uint docCookie);
 
             // Save the document
             var solutionService = (IVsSolution) VsIdeTestHostContext.ServiceProvider.GetService(typeof (IVsSolution));
@@ -347,19 +341,13 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
                 (IVsRunningDocumentTable)
                     VsIdeTestHostContext.ServiceProvider.GetService(typeof (IVsRunningDocumentTable));
             Assert.IsNotNull(runningDocumentTableService, "Failed to get the Running Document Table Service");
-
-            // Get our document cookie and hierarchy for the file
-            uint docCookie;
-            IntPtr docData;
-            IVsHierarchy hierarchy;
-            uint itemId;
             runningDocumentTableService.FindAndLockDocument(
-                (uint) _VSRDTFLAGS.RDT_NoLock,
+                (uint)_VSRDTFLAGS.RDT_NoLock,
                 fullFileName,
-                out hierarchy,
-                out itemId,
-                out docData,
-                out docCookie);
+                out IVsHierarchy hierarchy,
+                out uint itemId,
+                out IntPtr docData,
+                out uint docCookie);
 
             // Get the SolutionService
             var solutionService = VsIdeTestHostContext.ServiceProvider.GetService(typeof (IVsSolution)) as IVsSolution;
@@ -380,12 +368,11 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
         {
             var uiShellService = VsIdeTestHostContext.ServiceProvider.GetService(typeof (SVsUIShell)) as IVsUIShell;
             Assert.IsNotNull(uiShellService);
-            IVsWindowFrame windowFrame;
-            int hr = uiShellService.FindToolWindow((uint) __VSFINDTOOLWIN.FTW_fFindFirst, ref persistenceGuid,
-                out windowFrame);
+            int hr = uiShellService.FindToolWindow((uint)__VSFINDTOOLWIN.FTW_fFindFirst, ref persistenceGuid,
+                out IVsWindowFrame windowFrame);
             Assert.IsTrue(hr == VSConstants.S_OK);
 
-            return (windowFrame != null);
+            return windowFrame != null;
         }
 
         #endregion
@@ -395,8 +382,7 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
         public IVsPackage LoadPackage(Guid packageGuid)
         {
             var shellService = (IVsShell) VsIdeTestHostContext.ServiceProvider.GetService(typeof (SVsShell));
-            IVsPackage package;
-            shellService.LoadPackage(ref packageGuid, out package);
+            shellService.LoadPackage(ref packageGuid, out IVsPackage package);
             Assert.IsNotNull(package, "Failed to load package");
             return package;
         }
@@ -406,6 +392,7 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
         /// <summary>
         ///     Executes a Command (menu item) in the given context
         /// </summary>
+        /// <param name="cmd"></param>
         public void ExecuteCommand(CommandID cmd)
         {
             object Customin = null;

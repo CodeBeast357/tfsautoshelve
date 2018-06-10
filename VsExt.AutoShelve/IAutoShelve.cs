@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace VsExt.AutoShelve {
+namespace VsExt.AutoShelve
+{
     /// <summary>
     /// This is the interface that will be implemented by the global service exposed
     /// by the package defined in vsExtAutoShelvePackage. It is defined as COM 
@@ -10,7 +11,8 @@ namespace VsExt.AutoShelve {
     /// </summary>
     [Guid("6581CC5B-7771-4ACE-8B47-FAE72B687341")]
     [ComVisible(true)]
-    interface IAutoShelveService {
+    public interface IAutoShelve
+    {
         bool IsRunning { get; }
         ushort MaximumShelvesets { get; set; }
         string ShelvesetName { get; set; }
@@ -20,10 +22,10 @@ namespace VsExt.AutoShelve {
         void Start();
         void Stop();
 
-        event EventHandler<VsExt.AutoShelve.EventArgs.ShelvesetCreatedEventArgs> OnShelvesetCreated;
-        event EventHandler<VsExt.AutoShelve.EventArgs.TfsConnectionErrorEventArgs> OnTfsConnectionError;
-        event EventHandler OnStart;
-        event EventHandler OnStop;
+        event EventHandler<VsExt.AutoShelve.EventArgs.ShelvesetCreatedEventArgs> ShelvesetCreated;
+        event EventHandler<VsExt.AutoShelve.EventArgs.TfsConnectionErrorEventArgs> TfsConnectionErrorReceived;
+        event EventHandler Started;
+        event EventHandler Stopped;
     }
 
     /// <summary>
@@ -33,6 +35,7 @@ namespace VsExt.AutoShelve {
     /// define a new type as the service's identifier because a service can expose different interfaces.
     /// </summary>
     [Guid("ABEC5E88-9257-46C8-852F-57F42F5F4023")]
-    interface SAutoShelveService {
+    public interface ISAutoShelve
+    {
     }
 }

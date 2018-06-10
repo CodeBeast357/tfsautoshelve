@@ -1,19 +1,25 @@
 using System;
 
-namespace VsExt.AutoShelve.EventArgs {
-    public class ShelvesetCreatedEventArgs : System.EventArgs {
-        public Exception ExecutionException { get; set; }
+namespace VsExt.AutoShelve.EventArgs
+{
+    public class ShelvesetCreatedEventArgs : System.EventArgs
+    {
+        public string ShelvesetName { get; }
 
-        public bool ExecutionSuccess {
-            get {
-                return (ExecutionException == null);
-            }
+        public int ShelvesetChangeCount { get; }
+
+        public int ShelvesetsPurgeCount { get; }
+
+        public Exception Error { get; }
+
+        public bool IsSuccess => Error == null;
+
+        public ShelvesetCreatedEventArgs(string shelvesetName, int shelvesetChangeCount, int shelvesetPurgeCount, Exception error)
+        {
+            ShelvesetName = shelvesetName;
+            ShelvesetChangeCount = shelvesetChangeCount;
+            ShelvesetsPurgeCount = shelvesetPurgeCount;
+            Error = error;
         }
-
-        public int ShelvesetChangeCount { get; set; }
-        
-        public int ShelvesetsPurgeCount { get; set; }
-
-        public string ShelvesetName { get; set; }
     }
 }

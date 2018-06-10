@@ -93,8 +93,8 @@ namespace VsExt.AutoShelve_IntegrationTests
                 //Get the project
                 Project project = dte.Solution.Item(1);
                 Assert.IsNotNull(project);
-                Assert.IsTrue(string.Compare(project.Name, projectName, StringComparison.InvariantCultureIgnoreCase) ==
-                              0);
+                Assert.IsTrue(string.Compare(project.Name, projectName, StringComparison.InvariantCultureIgnoreCase)
+                              == 0);
 
                 //Verify Adding new code file to project
                 string newItemTemplatePath = Path.Combine(dte.Solution.ProjectItemsTemplatePath(projectType),

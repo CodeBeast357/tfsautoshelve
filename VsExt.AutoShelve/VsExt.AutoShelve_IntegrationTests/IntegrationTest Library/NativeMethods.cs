@@ -9,11 +9,11 @@ PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
 
 ***************************************************************************/
 
+using Microsoft.VisualStudio.OLE.Interop;
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
-using Microsoft.VisualStudio.OLE.Interop;
 
 namespace Microsoft.VsSDK.IntegrationTestLibrary
 {
@@ -95,7 +95,6 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
         [DllImport("user32")]
         internal static extern int GetWindowText(IntPtr hWnd, StringBuilder className, int stringLength);
 
-
         [DllImport("user32")]
         internal static extern bool EndDialog(IntPtr hDlg, int result);
 
@@ -109,17 +108,19 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
                 return error;
             }
 
-            return ((error & 0x0000FFFF) | (Facility_Win32 << 16) | 0x80000000);
+            return (error & 0x0000FFFF) | (Facility_Win32 << 16) | 0x80000000;
         }
 
-        /// <devdoc>
+        /// <summary>
         ///     Please use this "approved" method to compare file names.
-        /// </devdoc>
+        /// </summary>
+        /// <param name="file1"></param>
+        /// <param name="file2"></param>
         public static bool IsSamePath(string file1, string file2)
         {
-            if (file1 == null || file1.Length == 0)
+            if (string.IsNullOrEmpty(file1))
             {
-                return (file2 == null || file2.Length == 0);
+                return string.IsNullOrEmpty(file2);
             }
 
             Uri uri1 = null;
@@ -127,13 +128,13 @@ namespace Microsoft.VsSDK.IntegrationTestLibrary
 
             try
             {
-                if (!Uri.TryCreate(file1, UriKind.Absolute, out uri1) ||
-                    !Uri.TryCreate(file2, UriKind.Absolute, out uri2))
+                if (!Uri.TryCreate(file1, UriKind.Absolute, out uri1)
+                    || !Uri.TryCreate(file2, UriKind.Absolute, out uri2))
                 {
                     return false;
                 }
 
-                if (uri1 != null && uri1.IsFile && uri2 != null && uri2.IsFile)
+                if (uri1?.IsFile == true && uri2?.IsFile == true)
                 {
                     return 0 == String.Compare(uri1.LocalPath, uri2.LocalPath, StringComparison.OrdinalIgnoreCase);
                 }

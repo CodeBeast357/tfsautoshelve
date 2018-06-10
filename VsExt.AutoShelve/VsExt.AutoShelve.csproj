@@ -125,6 +125,7 @@
   <ItemGroup>
     <Compile Include="EventArgs\TfsConnectionErrorEventArgs.cs" />
     <Compile Include="EventArgs\ShelvesetCreatedEventArgs.cs" />
+    <Compile Include="EventArgs\TfsShelvesetErrorEventArgs.cs" />
     <Compile Include="IAutoShelve.cs" />
     <Compile Include="Packaging\Guids.cs" />
     <Compile Include="EventArgs\OptionsChangedEventArgs.cs" />

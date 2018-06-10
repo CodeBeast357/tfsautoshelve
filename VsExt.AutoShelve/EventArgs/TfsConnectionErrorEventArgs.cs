@@ -1,8 +1,14 @@
 using System;
 
-namespace VsExt.AutoShelve.EventArgs {
+namespace VsExt.AutoShelve.EventArgs
+{
     public class TfsConnectionErrorEventArgs : System.EventArgs
     {
-        public Exception ConnectionError { get; set; }
+        public Exception Error { get; }
+
+        public TfsConnectionErrorEventArgs(Exception error)
+        {
+            Error = error;
+        }
     }
 }

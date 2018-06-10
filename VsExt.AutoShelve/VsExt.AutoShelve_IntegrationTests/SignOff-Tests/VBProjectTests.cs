@@ -1,8 +1,8 @@
-﻿using System;
-using EnvDTE;
+﻿using EnvDTE;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.VsSDK.IntegrationTestLibrary;
 using Microsoft.VSSDK.Tools.VsIdeTesting;
+using System;
 
 namespace VsExt.AutoShelve_IntegrationTests
 {
@@ -29,70 +29,49 @@ namespace VsExt.AutoShelve_IntegrationTests
 
         #endregion
 
-        #region Additional test attributes
-
-        //
-        // You can use the following additional attributes as you write your tests:
-        //
-        // Use ClassInitialize to run code before running the first test in the class
-        // [ClassInitialize()]
-        // public static void MyClassInitialize(TestContext testContext) { }
-        //
-        // Use ClassCleanup to run code after all tests in a class have run
-        // [ClassCleanup()]
-        // public static void MyClassCleanup() { }
-        //
-        // Use TestInitialize to run code before running each test 
-        // [TestInitialize()]
-        // public void MyTestInitialize() { }
-        //
-        // Use TestCleanup to run code after each test has run
-        // [TestCleanup()]
-        // public void MyTestCleanup() { }
-        //
-
-        #endregion
-
         [HostType("VS IDE")]
         [TestMethod]
         public void VbWinformsApplication()
         {
-            UIThreadInvoker.Invoke((ThreadInvoker) delegate
-            {
-                //Solution and project creation parameters
-                const string solutionName = "VBWinApp";
-                const string projectName = "VBWinApp";
+            UIThreadInvoker.Invoke((ThreadInvoker)delegate
+           {
+               //Solution and project creation parameters
+               const string solutionName = "VBWinApp";
+               const string projectName = "VBWinApp";
 
-                //Template parameters
-                const string language = "VisualBasic";
-                const string projectTemplateName = "WindowsApplication.Zip";
-                const string itemTemplateName = "CodeFile.zip";
-                const string newFileName = "Test.vb";
+               //Template parameters
+               const string language = "VisualBasic";
+               const string projectTemplateName = "WindowsApplication.Zip";
+               const string itemTemplateName = "CodeFile.zip";
+               const string newFileName = "Test.vb";
 
-                var dte = (DTE) VsIdeTestHostContext.ServiceProvider.GetService(typeof (DTE));
+               var dte = (DTE)VsIdeTestHostContext.ServiceProvider.GetService(typeof(DTE));
 
-                var testUtils = new TestUtils();
+               var testUtils = new TestUtils();
 
-                testUtils.CreateEmptySolution(TestContext.TestDir, solutionName);
-                Assert.AreEqual(0, testUtils.ProjectCount());
+               testUtils.CreateEmptySolution(TestContext.TestDir, solutionName);
+               Assert.AreEqual(0, testUtils.ProjectCount());
 
-                //Add new  Windows application project to existing solution
-                testUtils.CreateProjectFromTemplate(projectName, projectTemplateName, language, false);
+               //Add new  Windows application project to existing solution
+               testUtils.CreateProjectFromTemplate(projectName, projectTemplateName, language, false);
 
-                //Verify that the new project has been added to the solution
-                Assert.AreEqual(1, testUtils.ProjectCount());
+               //Verify that the new project has been added to the solution
+               Assert.AreEqual(1, testUtils.ProjectCount());
 
-                //Get the project
-                Project project = dte.Solution.Item(1);
-                Assert.IsNotNull(project);
-                Assert.IsTrue(string.Compare(project.Name, projectName, StringComparison.InvariantCultureIgnoreCase) ==
-                              0);
+               //Get the project
+               Project project = dte.Solution.Item(1);
+               Assert.IsNotNull(project);
+               Assert.IsTrue(string.Compare(project.Name, projectName, StringComparison.InvariantCultureIgnoreCase)
+                             == 0);
 
-                //Verify Adding new code file to project
-                ProjectItem newCodeFileItem = testUtils.AddNewItemFromVsTemplate(project.ProjectItems, itemTemplateName,
-                    language, newFileName);
-                Assert.IsNotNull(newCodeFileItem, "Could not create new project item");
-            });
+               //Verify Adding new code file to project
+               ProjectItem newCodeFileItem = testUtils.AddNewItemFromVsTemplate(
+                   project.ProjectItems,
+                   itemTemplateName,
+                   language,
+                   newFileName);
+               Assert.IsNotNull(newCodeFileItem, "Could not create new project item");
+           });
         }
     }
 }

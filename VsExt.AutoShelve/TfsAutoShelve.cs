@@ -1,73 +1,54 @@
-using System;
-using System.Linq;
-using System.Net;
-using System.Threading;
 using EnvDTE;
 using EnvDTE80;
 using Microsoft.TeamFoundation.Client;
 using Microsoft.TeamFoundation.VersionControl.Client;
 using Microsoft.VisualStudio.TeamFoundation;
-using VsExt.AutoShelve.EventArgs;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
+using VsExt.AutoShelve.EventArgs;
 
 // Ref http://visualstudiogallery.msdn.microsoft.com/080540cb-e35f-4651-b71c-86c73e4a633d
 namespace VsExt.AutoShelve
 {
-    public class TfsAutoShelve : SAutoShelveService, IAutoShelveService, IDisposable
+    public class TfsAutoShelve : ISAutoShelve, IAutoShelve, IDisposable
     {
-        private Timer _timer;
-        private IServiceProvider serviceProvider;
-        private string _extensionName = Resources.ExtensionName;
+        private static string _extensionName => Resources.ExtensionName;
 
-        public TfsAutoShelve(IServiceProvider sp)
+        private readonly Timer _timer;
+        private readonly IServiceProvider _serviceProvider;
+
+        private TimerCallback AutoShelveCallback => _ => CreateShelveset();
+
+        public TfsAutoShelve(IServiceProvider serviceProvider)
         {
-            serviceProvider = sp;
-            try
-            {
-                var autoResetEvent = new AutoResetEvent(false);
-                _timer = new Timer(GetAutoShelveCallback(), autoResetEvent, Timeout.Infinite, Timeout.Infinite);
-            }
-            catch { }
+            _serviceProvider = serviceProvider;
+            var autoResetEvent = new AutoResetEvent(false);
+            _timer = new Timer(AutoShelveCallback, autoResetEvent, Timeout.Infinite, Timeout.Infinite);
         }
 
         #region IAutoShelveService
 
-        private bool _isRunning = false;
-        public bool IsRunning
-        {
-            get
-            {
-                return _isRunning;
-            }
-        }
+        public bool IsRunning { get; private set; }
 
-        private ushort _maxShelvesets;
+        private ushort _maximumShelvesets;
+
         public ushort MaximumShelvesets
         {
             get
             {
-                return (IsDateSpecificShelvesetName) ? _maxShelvesets : (ushort)0;
+                return ShelvesetName.IsNameSpecificToDate() ? _maximumShelvesets : (ushort)0;
             }
             set
             {
-                _maxShelvesets = value;
+                _maximumShelvesets = value;
             }
         }
 
-        private string _shelvesetName;
-        public string ShelvesetName
-        {
-            get
-            {
-                return _shelvesetName;
-            }
-            set
-            {
-                _shelvesetName = value;
-                IsDateSpecificShelvesetName = string.Format(ShelvesetName, null, null, "IsDate", null, null).Contains("IsDate");
-                IsWorkspaceSpecificShelvesetName = string.Format(ShelvesetName, "IsWorkspace", null, null, null, null).Contains("IsWorkspace");
-            }
-        }
+        public string ShelvesetName { get; set; }
 
         public double TimerInterval { get; set; }
 
@@ -75,44 +56,49 @@ namespace VsExt.AutoShelve
         {
             try
             {
-                if (TfsExt == null) return;
-                var domainUri = WebUtility.UrlDecode(_tfsExt.ActiveProjectContext.DomainUri);
-                var teamProjectCollection = TfsTeamProjectCollectionFactory.GetTeamProjectCollection(new Uri(domainUri));
+                if (ProjectCollectionUri == null) return;
+                var teamProjectCollection = TfsTeamProjectCollectionFactory.GetTeamProjectCollection(ProjectCollectionUri);
                 teamProjectCollection.Credentials = CredentialCache.DefaultNetworkCredentials;
                 teamProjectCollection.EnsureAuthenticated();
 
                 var service = (VersionControlServer)teamProjectCollection.GetService(typeof(VersionControlServer));
-                var allLocalWorkspaceInfo = Workstation.Current.GetAllLocalWorkspaceInfo();
-
-                foreach (var workspaceInfo in allLocalWorkspaceInfo)
+                var infos = new AutoShelveInfos(this);
+                foreach (var workspaceInfo in Workstation.Current.GetAllLocalWorkspaceInfo())
                 {
-                    // Replace(/,"") before comparing domainUri to prevent: "TFS Auto Shelve shelved 0 pending changes. Shelveset Name: "
-                    if (workspaceInfo.MappedPaths.Length <= 0 ||
-                        workspaceInfo.ServerUri.ToString().Replace("/", string.Empty) !=
-                        domainUri.Replace("/", string.Empty)) continue;
-                    var workspace = service.GetWorkspace(workspaceInfo);
-                    CreateShelveset(service, workspace, force);
+                    if (workspaceInfo.MappedPaths.Length <= 0 || !workspaceInfo.ServerUri.Equals(ProjectCollectionUri))
+                    {
+                        continue;
+                    }
+
+                    Task.Run(() =>
+                    {
+                        var result = CreateShelvesetInternal(service, workspaceInfo, infos, force);
+                        if (!result.IsSuccess)
+                        {
+                            InvalidateConnection(); // Force re-init on next attempt
+                        }
+                        ShelvesetCreated?.Invoke(this, result);
+                    });
                 }
             }
             catch (Exception ex)
             {
-                _tfsExt = null; // Force re-init on next attempt
-                if (OnShelvesetCreated != null)
-                {
-                    var autoShelveEventArg = new ShelvesetCreatedEventArgs { ExecutionException = ex };
-                    OnShelvesetCreated(this, autoShelveEventArg);
-                }
+                InvalidateConnection(); // Force re-init on next attempt
+                TfsShelvesetErrorReceived?.Invoke(this, new TfsShelvesetErrorEventArgs(error: ex));
             }
         }
+
         #region Events
 
-        public event EventHandler<ShelvesetCreatedEventArgs> OnShelvesetCreated;
+        public event EventHandler<ShelvesetCreatedEventArgs> ShelvesetCreated;
 
-        public event EventHandler<TfsConnectionErrorEventArgs> OnTfsConnectionError;
+        public event EventHandler<TfsShelvesetErrorEventArgs> TfsShelvesetErrorReceived;
 
-        public event EventHandler OnStart;
+        public event EventHandler<TfsConnectionErrorEventArgs> TfsConnectionErrorReceived;
 
-        public event EventHandler OnStop;
+        public event EventHandler Started;
+
+        public event EventHandler Stopped;
 
         #endregion
 
@@ -120,108 +106,123 @@ namespace VsExt.AutoShelve
 
         #region Private Members
 
-        private bool IsDateSpecificShelvesetName { get; set; }
+        private class AutoShelveInfos
+        {
+            public event EventHandler<ShelvesetCreatedEventArgs> ShelvesetCreated
+            {
+                add { service.ShelvesetCreated += value; }
+                remove { service.ShelvesetCreated -= value; }
+            }
 
-        private bool IsWorkspaceSpecificShelvesetName { get; set; }
+            public ushort MaximumShelvesets { get; }
 
-        private TeamFoundationServerExt _tfsExt;
-        private TeamFoundationServerExt TfsExt
+            public string ShelvesetName { get; }
+
+            private readonly IAutoShelve service;
+
+            public AutoShelveInfos(IAutoShelve service)
+            {
+                this.service = service;
+                MaximumShelvesets = service.MaximumShelvesets;
+                ShelvesetName = service.ShelvesetName;
+            }
+        }
+
+        private Uri _projectCollectionUri;
+
+        public Uri ProjectCollectionUri
         {
             get
             {
-                if (_tfsExt != null) return _tfsExt;
+                if (_projectCollectionUri != null) return _projectCollectionUri;
                 try
                 {
-                    DTE2 dte = (DTE2)this.serviceProvider.GetService(typeof(DTE));
+                    var dte = (DTE2)_serviceProvider.GetService(typeof(DTE));
                     var obj = (TeamFoundationServerExt)dte.GetObject("Microsoft.VisualStudio.TeamFoundation.TeamFoundationServerExt");
-                    if (obj.ActiveProjectContext.DomainUri == null)
-                        throw new NullReferenceException("Microsoft.VisualStudio.TeamFoundation.TeamFoundationServerExt.ActiveProjectContext.DomainUri cannot be null");
-                    else 
-                        _tfsExt = obj;
+                    _projectCollectionUri = new Uri(WebUtility.UrlDecode(obj.ActiveProjectContext.DomainUri));
                 }
                 catch (Exception ex)
                 {
                     Stop();  // Disable timer to prevent Ref: Q&A "endless error dialogs" @ http://visualstudiogallery.msdn.microsoft.com/080540cb-e35f-4651-b71c-86c73e4a633d 
-                    if (OnTfsConnectionError != null)
-                    {
-                        OnTfsConnectionError(this, new TfsConnectionErrorEventArgs{ConnectionError = ex });
-                    }
+                    TfsConnectionErrorReceived?.Invoke(this, new TfsConnectionErrorEventArgs(error: ex));
                 }
-                return _tfsExt;
+                return _projectCollectionUri;
             }
         }
 
-        private string CleanShelvesetName(string shelvesetName)
+        private void InvalidateConnection()
         {
-            if (!string.IsNullOrWhiteSpace(shelvesetName))
-            {
-                string cleanName = shelvesetName.Replace("/", string.Empty).Replace(":", string.Empty).Replace("<", string.Empty).Replace(">", string.Empty).Replace("\\", string.Empty).Replace("|", string.Empty).Replace("*", string.Empty).Replace("?", string.Empty).Replace(";", string.Empty);
-                if (cleanName.Length > 64)
-                {
-                    return cleanName.Substring(0, 63);
-                }
-                return cleanName;
-            }
-            return shelvesetName;
+            _projectCollectionUri = null;
         }
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="service"></param>
-        /// <param name="workspace"></param>
+        /// <param name="infos"></param>
+        /// <param name="workspaceInfo"></param>
         /// <param name="force">True when the user manually initiates a ShelveSet via the Team menu or mapped shortcut key.</param>
-        private void CreateShelveset(VersionControlServer service, Workspace workspace, bool force)
+        private static ShelvesetCreatedEventArgs CreateShelvesetInternal(VersionControlServer service, WorkspaceInfo workspaceInfo, AutoShelveInfos infos, bool force)
         {
-            // Build event args for notification create shelveset result
-            var autoShelveEventArg = new ShelvesetCreatedEventArgs();
-            autoShelveEventArg.ShelvesetChangeCount = 0; // Shouldn't be necessary, but forcing it to be safe.
+            var shelvesetName = default(string);
+            var shelvesetChangeCount = 0;
+            var shelvesetPurgeCount = 0;
+            var error = default(Exception);
 
             try
             {
+                var workspace = service.GetWorkspace(workspaceInfo);
+
+                // Build a new, valid shelve set name
+                shelvesetName = string.Format(infos.ShelvesetName, workspace.Name, workspace.OwnerName, DateTime.Now, workspace.OwnerName.GetDomain(), workspace.OwnerName.GetLogin());
+                shelvesetName = shelvesetName.CleanShelvesetName();
+
                 // If there are no pending changes that have changed since the last shelveset then there is nothing to do
-                bool isDelta = false;
+                var hasChanges = force;
                 var pendingChanges = workspace.GetPendingChanges();
-                int numPending = pendingChanges.Count();
+                var numPending = pendingChanges.Length;
 
                 if (numPending > 0)
                 {
+                    var pastShelvesets = GetPastShelvesets(service, workspace, infos.ShelvesetName);
+
                     if (!force)
                     {
-                        var lastShelveset = GetPastShelvesets(service, workspace).FirstOrDefault();
+                        var lastShelveset = pastShelvesets.FirstOrDefault();
                         if (lastShelveset == null)
                         {
                             // If there are pending changes and no shelveset yet exists, then create shelveset.
-                            isDelta = true;
-                        } else
+                            hasChanges = true;
+                        }
+                        else
                         {
                             // Compare numPending to shelvedChanges.Count();  Force shelveset if they differ
                             // Otherwise, resort to comparing file HashValues
                             var shelvedChanges = service.QueryShelvedChanges(lastShelveset).FirstOrDefault();
-                            isDelta = (shelvedChanges == null || numPending != shelvedChanges.PendingChanges.Count()) || pendingChanges.DifferFrom(shelvedChanges.PendingChanges);
+                            hasChanges = (shelvedChanges == null
+                                || numPending != shelvedChanges.PendingChanges.Length)
+                                || pendingChanges.DifferFrom(shelvedChanges.PendingChanges);
                         }
                     }
-                    if (force || isDelta)
-                    {
-                        autoShelveEventArg.ShelvesetChangeCount = numPending;
 
-                        // Build a new, valid shelve set name
-                        var setname = string.Format(ShelvesetName, workspace.Name, workspace.OwnerName, DateTime.Now, workspace.OwnerName.GetDomain(), workspace.OwnerName.GetLogin());
-                        setname = CleanShelvesetName(setname);
+                    if (hasChanges)
+                    {
+                        shelvesetChangeCount = numPending;
 
                         // Actually create a new Shelveset 
-                        var shelveset = new Shelveset(service, setname, workspace.OwnerName);
-                        autoShelveEventArg.ShelvesetName = setname;
-                        shelveset.Comment = string.Format("Shelved by {0}. {1} items", _extensionName, numPending);
+                        var shelveset = new Shelveset(service, shelvesetName, workspace.OwnerName)
+                        {
+                            Comment = string.Format("Shelved by {0}. {1} items", _extensionName, numPending)
+                        };
                         workspace.Shelve(shelveset, pendingChanges, ShelvingOptions.Replace);
 
                         // Clean up past Shelvesets
-                        if (MaximumShelvesets > 0)
+                        if (infos.MaximumShelvesets > 0)
                         {
-                            foreach (var set in GetPastShelvesets(service, workspace).Skip(MaximumShelvesets))
+                            foreach (var set in pastShelvesets.Skip(infos.MaximumShelvesets))
                             {
                                 service.DeleteShelveset(set);
-                                autoShelveEventArg.ShelvesetsPurgeCount++;
+                                shelvesetPurgeCount++;
                             }
                         }
                     }
@@ -229,22 +230,23 @@ namespace VsExt.AutoShelve
             }
             catch (Exception ex)
             {
-                _tfsExt = null; // Force re-init on next attempt
-                autoShelveEventArg.ExecutionException = ex;
+                error = ex;
             }
-            // Fire event for each VS instance to report results
-            if (OnShelvesetCreated != null)
-            {
-                OnShelvesetCreated(this, autoShelveEventArg);
-            }
+
+            // Build event args for notification create shelveset result
+            return new ShelvesetCreatedEventArgs(
+                shelvesetName: shelvesetName,
+                shelvesetChangeCount: shelvesetChangeCount,
+                shelvesetPurgeCount: shelvesetPurgeCount,
+                error: error);
         }
 
-        private IEnumerable<Shelveset> GetPastShelvesets(VersionControlServer service, Workspace workspace)
+        private static IEnumerable<Shelveset> GetPastShelvesets(VersionControlServer service, Workspace workspace, string shelvesetName)
         {
-            var pastShelvesets = service.QueryShelvesets(null, workspace.OwnerName).Where(s => s.Comment != null && s.Comment.Contains(_extensionName));
-            if (pastShelvesets != null && pastShelvesets.Count() > 0)
+            var pastShelvesets = service.QueryShelvesets(null, workspace.OwnerName).Where(s => s.Comment?.Contains(_extensionName) == true);
+            if (pastShelvesets?.Any() == true)
             {
-                if (IsWorkspaceSpecificShelvesetName)
+                if (shelvesetName.IsNameSpecificToWorkspace())
                 {
                     pastShelvesets = pastShelvesets.Where(s => s.Name.Contains(workspace.Name));
                 }
@@ -254,7 +256,6 @@ namespace VsExt.AutoShelve
             {
                 return pastShelvesets;
             }
-
         }
 
         #region IDisposable
@@ -265,59 +266,30 @@ namespace VsExt.AutoShelve
             GC.SuppressFinalize(this);
         }
 
-        //// NOTE: Leave out the finalizer altogether if this class doesn't 
-        //// own unmanaged resources itself, but leave the other methods
-        //// exactly as they are. 
-        //~TfsAutoShelve()
-        //{
-        //    // Finalizer calls Dispose(false)
-        //    Dispose(false);
-        //}
-
         // The bulk of the clean-up code is implemented in Dispose(bool)
         protected virtual void Dispose(bool disposeManaged)
         {
-            if (_timer != null)
-            {
-                _timer.Dispose();
-            }
+            _timer?.Dispose();
         }
 
         #endregion
 
-        private TimerCallback GetAutoShelveCallback()
-        {
-            TimerCallback timerCallback = state =>
-            {
-                CreateShelveset();
-            }
-            ;
-            return timerCallback;
-        }
-
         public void Start()
         {
             _timer.Change(TimeSpan.FromMinutes(TimerInterval), TimeSpan.FromMinutes(TimerInterval));
-            _isRunning = true;
-            if (OnStart != null)
-            {
-                OnStart(this, new System.EventArgs());
-            }
+            IsRunning = true;
+            Started?.Invoke(this, System.EventArgs.Empty);
         }
 
         public void Stop()
         {
-            if (!_isRunning) return;
+            if (!IsRunning) return;
             _timer.Change(Timeout.Infinite, Timeout.Infinite);
-            _isRunning = false;
-            if (OnStop != null)
-            {
-                OnStop(this, new System.EventArgs());
-            }
+            IsRunning = false;
+            Stopped?.Invoke(this, System.EventArgs.Empty);
         }
 
         #endregion
 
     }
-
 }

@@ -1,16 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.Design;
-using System.Diagnostics;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Windows.Forms;
-using EnvDTE;
+﻿using EnvDTE;
 using EnvDTE80;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using System;
+using System.ComponentModel.Design;
+using System.Diagnostics;
+using System.Globalization;
+using System.Linq;
+using System.Runtime.InteropServices;
 using VsExt.AutoShelve.EventArgs;
 using VsExt.AutoShelve.IO;
 using VsExt.AutoShelve.Packaging;
@@ -18,14 +15,15 @@ using VsExt.AutoShelve.Packaging;
 namespace VsExt.AutoShelve
 {
     /// <summary>
-    /// This is the class that implements the package exposed by this assembly.
-    ///
+    /// <para>This is the class that implements the package exposed by this assembly.</para>
+    /// <para>
     /// The minimum requirement for a class to be considered a valid package for Visual Studio
     /// is to implement the IVsPackage interface and register itself with the shell.
     /// This package uses the helper classes defined inside the Managed Package Framework (MPF)
     /// to do it: it derives from the Package class that provides the implementation of the 
     /// IVsPackage interface and uses the registration attributes defined in the framework to 
     /// register itself and its components with the shell.
+    /// </para>
     /// </summary>
     // This attribute tells the PkgDef creation utility (CreatePkgDef.exe) that this class is a package.
     [PackageRegistration(UseManagedResourcesOnly = true)]
@@ -40,20 +38,18 @@ namespace VsExt.AutoShelve
     [Guid(GuidList.GuidAutoShelvePkgString)]
     public class VsExtAutoShelvePackage : Package, IVsSolutionEvents, IDisposable
     {
-
-        private IAutoShelveService _autoShelve;
+        private IAutoShelve _autoShelve;
         private DTE2 _dte;
         private IVsActivityLog _log;
-        private OleMenuCommand _menuAutoShelveNow;
         private OleMenuCommand _menuRunState;
-        private string _extName = Resources.ExtensionName;
-        private string _menuTextRunning = string.Concat(Resources.ExtensionName, " (Running)");
-        private string _menuTextStopped = string.Concat(Resources.ExtensionName, " (Not Running)");
+        private readonly string _extName = Resources.ExtensionName;
+        private readonly string _menuTextRunning = string.Concat(Resources.ExtensionName, " (Running)");
+        private readonly string _menuTextStopped = string.Concat(Resources.ExtensionName, " (Not Running)");
         private OptionsPageGeneral _options;
         private uint _solutionEventsCookie;
         private IVsSolution2 _solutionService;
-        private DebuggerEvents _debuggerEvents;
         private bool _isPaused;
+
         /// <summary>
         /// Default constructor of the package.
         /// Inside this method you can place any initialization code that does not require 
@@ -67,20 +63,17 @@ namespace VsExt.AutoShelve
 
             IServiceContainer serviceContainer = this as IServiceContainer;
             ServiceCreatorCallback callback = new ServiceCreatorCallback(CreateService);
-            serviceContainer.AddService(typeof(SAutoShelveService), callback, true);
-            //serviceContainer.AddService(typeof(SMyLocalService), callback); 
+            serviceContainer.AddService(typeof(ISAutoShelve), callback, true);
         }
 
         private object CreateService(IServiceContainer container, Type serviceType)
         {
-            if (typeof(SAutoShelveService) == serviceType)
+            if (typeof(ISAutoShelve) == serviceType)
             {
                 if (_autoShelve == null)
                     _autoShelve = new TfsAutoShelve(this);
                 return _autoShelve;
             }
-            //if (typeof(SMyLocalService) == serviceType)
-            //    return new MyLocalService(this);
             return null;
         }
 
@@ -88,15 +81,11 @@ namespace VsExt.AutoShelve
         // Overridden Package Implementation
         #region Package Members
 
-        private void autoShelve_OnShelvesetCreated(object sender, ShelvesetCreatedEventArgs e)
+        private void AutoShelve_OnShelvesetCreated(object sender, ShelvesetCreatedEventArgs e)
         {
-            if (e.ExecutionSuccess)
+            if (e.IsSuccess)
             {
-                if (e.ShelvesetChangeCount == 0)
-                {
-                    //WriteToOutputWindow(".");
-                }
-                else
+                if (e.ShelvesetChangeCount != 0)
                 {
                     var str = string.Format("Shelved {0} pending change{1} to Shelveset Name: {2}", e.ShelvesetChangeCount,
                       e.ShelvesetChangeCount != 1 ? "s" : "", e.ShelvesetName);
@@ -110,22 +99,22 @@ namespace VsExt.AutoShelve
             }
             else
             {
-                WriteException(e.ExecutionException);
+                WriteException(e.Error);
             }
         }
 
-        private void autoShelve_OnTfsConnectionError(object sender, TfsConnectionErrorEventArgs e)
+        private void AutoShelve_OnTfsConnectionError(object sender, TfsConnectionErrorEventArgs e)
         {
             WriteLineToOutputWindow(Resources.ErrorNotConnected);
-            WriteException(e.ConnectionError);
+            WriteException(e.Error);
         }
 
-        private void autoShelve_OnStart(object sender, System.EventArgs e)
+        private void AutoShelve_OnStart(object sender, System.EventArgs e)
         {
             DisplayRunState();
         }
 
-        private void autoShelve_OnStop(object sender, System.EventArgs e)
+        private void AutoShelve_OnStop(object sender, System.EventArgs e)
         {
             DisplayRunState();
         }
@@ -166,24 +155,16 @@ namespace VsExt.AutoShelve
                 // Initialize Tools->Options Page
                 _options = (OptionsPageGeneral)GetDialogPage(typeof(OptionsPageGeneral));
 
-                //var sccProvider = (Microsoft.VisualStudio.Shell.Interop.IVsGetScciProviderInterface)GetService(typeof(IVsRegisterScciProvider));
-                //var sccProvider = (IVsRegisterScciProvider)GetGlobalService(typeof(IVsRegisterScciProvider));
-                //sccProvider.GetSourceControlProviderID(out var pGuid);
-
                 // Initialize Solution Service Events
                 _solutionService = (IVsSolution2)GetGlobalService(typeof(SVsSolution));
-                if (_solutionService != null)
-                {
-                    _solutionService.AdviseSolutionEvents(this, out _solutionEventsCookie);
-                }
-				
-                _debuggerEvents = (EnvDTE.DebuggerEvents)_dte.Events.DebuggerEvents;
-                _debuggerEvents.OnEnterRunMode += new _dispDebuggerEvents_OnEnterRunModeEventHandler(OnEnterRunMode); ;
-                _debuggerEvents.OnEnterDesignMode += new _dispDebuggerEvents_OnEnterDesignModeEventHandler(OnEnterDesignMode); ;
+                _solutionService?.AdviseSolutionEvents(this, out _solutionEventsCookie);
+
+                var debuggerEvents = _dte.Events.DebuggerEvents;
+                debuggerEvents.OnEnterRunMode += new _dispDebuggerEvents_OnEnterRunModeEventHandler(OnEnterRunMode);
+                debuggerEvents.OnEnterDesignMode += new _dispDebuggerEvents_OnEnterDesignModeEventHandler(OnEnterDesignMode);
 
                 //InitializeOutputWindowPane
-                if (_dte != null
-                    && _dte.ToolWindows.OutputWindow.OutputWindowPanes.Cast<OutputWindowPane>().All(p => p.Name != _options.OutputPane))
+                if (_dte.ToolWindows.OutputWindow.OutputWindowPanes.Cast<OutputWindowPane>().All(p => p.Name != _options.OutputPane))
                 {
                     _dte.ToolWindows.OutputWindow.OutputWindowPanes.Add(_options.OutputPane);
                 }
@@ -198,10 +179,8 @@ namespace VsExt.AutoShelve
         }
 
         /// <summary>
-        /// 
-        /// </summary>
-        /// <remarks>
-        /// Register your own package service)
+        /// <para>
+        /// Register your own package service
         /// http://technet.microsoft.com/en-us/office/bb164693(v=vs.71).aspx
         /// http://blogs.msdn.com/b/aaronmar/archive/2004/03/12/88646.aspx
         /// http://social.msdn.microsoft.com/Forums/vstudio/en-US/be755076-6e07-4025-93e7-514cd4019dcb/register-own-service?forum=vsx
@@ -209,13 +188,15 @@ namespace VsExt.AutoShelve
         /// rdt.AdviseRunningDocTableEvents(new YourRunningDocTableEvents());
         /// rdt.GetDocumentInfo(docCookie, ...)
         /// One of the out params is RDT_ProjSlnDocument; this will be set for your solution file. Note this flag also covers projects. Once you have sufficiently determined it is your solution you're set.
-        /// 
+        /// </para>
+        /// <para>
         /// http://msdn.microsoft.com/en-us/library/microsoft.visualstudio.shell.interop.ivsrunningdoctableevents.onaftersave.aspx
         /// http://social.msdn.microsoft.com/Forums/vstudio/it-IT/fd513e71-bb23-4de0-b631-35bfbdfdd4f5/visual-studio-isolated-shell-onsolutionsaved-event?forum=vsx
-        /// </remarks>
+        /// </para>
+        /// </summary>
         private void InitializeAutoShelve()
         {
-            _autoShelve = GetGlobalService(typeof(SAutoShelveService)) as TfsAutoShelve;
+            _autoShelve = GetGlobalService(typeof(ISAutoShelve)) as TfsAutoShelve;
             if (_autoShelve != null)
             {
                 // Property Initialization
@@ -228,19 +209,19 @@ namespace VsExt.AutoShelve
 
         private void InitializeMenus()
         {
-            var mcs = GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
-            if (mcs != null)
+            if (GetService(typeof(IMenuCommandService)) is OleMenuCommandService mcs)
             {
                 var commandId = new CommandID(GuidList.GuidAutoShelveCmdSet, PkgCmdIdList.CmdidAutoShelve);
-                var oleMenuCommand = new OleMenuCommand(MenuItemCallbackAutoShelveRunState, commandId);
-                oleMenuCommand.Text = _menuTextStopped;
+                var oleMenuCommand = new OleMenuCommand(MenuItemCallbackAutoShelveRunState, commandId)
+                {
+                    Text = _menuTextStopped
+                };
                 _menuRunState = oleMenuCommand;
                 mcs.AddCommand(_menuRunState);
 
                 var commandId1 = new CommandID(GuidList.GuidAutoShelveCmdSet, PkgCmdIdList.CmdidAutoShelveNow);
-                var oleMenuCommand1 = new OleMenuCommand(MenuItemCallbackRunNow, commandId1);
-                _menuAutoShelveNow = oleMenuCommand1;
-                mcs.AddCommand(_menuAutoShelveNow);
+                var menuAutoShelveNow = new OleMenuCommand(MenuItemCallbackRunNow, commandId1);
+                mcs.AddCommand(menuAutoShelveNow);
             }
         }
 
@@ -281,10 +262,10 @@ namespace VsExt.AutoShelve
         {
             if (_autoShelve != null)
             {
-                _autoShelve.OnStop += autoShelve_OnStop;
-                _autoShelve.OnStart += autoShelve_OnStart;
-                _autoShelve.OnShelvesetCreated += autoShelve_OnShelvesetCreated;
-                _autoShelve.OnTfsConnectionError += autoShelve_OnTfsConnectionError;
+                _autoShelve.Stopped += AutoShelve_OnStop;
+                _autoShelve.Started += AutoShelve_OnStart;
+                _autoShelve.ShelvesetCreated += AutoShelve_OnShelvesetCreated;
+                _autoShelve.TfsConnectionErrorReceived += AutoShelve_OnTfsConnectionError;
             }
             if (_options != null)
             {
@@ -296,10 +277,10 @@ namespace VsExt.AutoShelve
         {
             if (_autoShelve != null)
             {
-                _autoShelve.OnStop -= autoShelve_OnStop;
-                _autoShelve.OnStart -= autoShelve_OnStart;
-                _autoShelve.OnShelvesetCreated -= autoShelve_OnShelvesetCreated;
-                _autoShelve.OnTfsConnectionError -= autoShelve_OnTfsConnectionError;
+                _autoShelve.Stopped -= AutoShelve_OnStop;
+                _autoShelve.Started -= AutoShelve_OnStart;
+                _autoShelve.ShelvesetCreated -= AutoShelve_OnShelvesetCreated;
+                _autoShelve.TfsConnectionErrorReceived -= AutoShelve_OnTfsConnectionError;
             }
             if (_options != null)
             {
@@ -321,16 +302,13 @@ namespace VsExt.AutoShelve
         {
             try
             {
-                var menuCommand = sender as OleMenuCommand;
-                if (menuCommand != null)
+                if (sender is OleMenuCommand menuCommand && menuCommand.CommandID.Guid == GuidList.GuidAutoShelveCmdSet)
                 {
-                    if (menuCommand.CommandID.Guid == GuidList.GuidAutoShelveCmdSet)
-                    {
-                        menuCommand.Text = _autoShelve.IsRunning ? _menuTextRunning : _menuTextStopped;
-                    }
+                    menuCommand.Text = _autoShelve.IsRunning ? _menuTextRunning : _menuTextStopped;
                 }
             }
-            catch { 
+            catch
+            {
                 // swallow exceptions 
             }
         }
@@ -339,8 +317,7 @@ namespace VsExt.AutoShelve
         {
             try
             {
-                if (_log != null)
-                    _log.LogEntry(3, "VsExtAutoShelvePackage", string.Format(CultureInfo.CurrentCulture, "Message: {0} Stack Trace: {1}", message, stackTrace));
+                _log?.LogEntry(3, "VsExtAutoShelvePackage", string.Format(CultureInfo.CurrentCulture, "Message: {0} Stack Trace: {1}", message, stackTrace));
             }
             catch
             {
@@ -370,7 +347,7 @@ namespace VsExt.AutoShelve
                     var oWindow = _dte.ToolWindows.OutputWindow.OutputWindowPanes.Item(_options.OutputPane);
                     oWindow.OutputString(outputText);
                     if (newLine)
-                        oWindow.OutputString(System.Environment.NewLine);
+                        oWindow.OutputString(Environment.NewLine);
                 }
             }
             catch
@@ -420,7 +397,7 @@ namespace VsExt.AutoShelve
 
         public int OnAfterCloseSolution(object pUnkReserved)
         {
-            if (_autoShelve != null && _autoShelve.IsRunning)
+            if (_autoShelve?.IsRunning == true)
             {
                 _autoShelve.CreateShelveset();
             }
@@ -433,12 +410,13 @@ namespace VsExt.AutoShelve
 
         public int OnAfterOpenSolution(object pUnkReserved, int fNewSolution)
         {
-            if (_autoShelve != null && !_autoShelve.IsRunning)
+            if (_autoShelve?.IsRunning == false)
             {
                 _autoShelve.Start();
             }
             return 0;
         }
+
         public int OnBeforeCloseProject(IVsHierarchy pHierarchy, int fRemoved) { return 0; }
 
         public int OnBeforeCloseSolution(object pUnkReserved) { return 0; }
@@ -468,7 +446,7 @@ namespace VsExt.AutoShelve
         }
 
         // The bulk of the clean-up code is implemented in Dispose(bool)
-        protected override void Dispose(bool disposeManaged)
+        protected override void Dispose(bool disposing)
         {
             try
             {
@@ -485,7 +463,7 @@ namespace VsExt.AutoShelve
             {
                 // swallow exceptions
             }
-            base.Dispose(disposeManaged);
+            base.Dispose(disposing);
         }
 
         #endregion

@@ -1,11 +1,11 @@
-﻿using System;
+﻿using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.VsSDK.IntegrationTestLibrary;
+using System;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
-using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.VsSDK.IntegrationTestLibrary;
 
 namespace VsExt.AutoShelve_IntegrationTests
 {
@@ -122,17 +122,24 @@ namespace VsExt.AutoShelve_IntegrationTests
             _buttonAction = buttonAction;
         }
 
-        /// <summary/>
-
         #region IDisposable Members
-        void IDisposable.Dispose()
+        public void Dispose()
         {
-            if (_isDisposed)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
             {
                 return;
             }
 
-            WaitForDialogThreadToTerminate();
+            if (disposing)
+            {
+                WaitForDialogThreadToTerminate();
+            }
 
             _isDisposed = true;
         }
@@ -143,14 +150,8 @@ namespace VsExt.AutoShelve_IntegrationTests
         internal void Start()
         {
             // We ask for the uishell here since we cannot do that on the therad that we will spawn.
-            var uiShell = Package.GetGlobalService(typeof (SVsUIShell)) as IVsUIShell;
-
-            if (uiShell == null)
-            {
-                throw new InvalidOperationException("Could not get the uiShell from the serviceProvider");
-            }
-
-            _uiShell = uiShell;
+            var uiShell = Package.GetGlobalService(typeof(SVsUIShell)) as IVsUIShell;
+            _uiShell = uiShell ?? throw new InvalidOperationException("Could not get the uiShell from the serviceProvider");
 
             var thread = new Thread(HandleDialogBoxes);
             thread.Start();
@@ -246,7 +247,7 @@ namespace VsExt.AutoShelve_IntegrationTests
                         string dialogBoxText;
                         try
                         {
-                            unmanagedMemoryLocation = Marshal.AllocHGlobal(10*1024);
+                            unmanagedMemoryLocation = Marshal.AllocHGlobal(10 * 1024);
                             NativeMethods.EnumChildWindows(hwnds[hwndIndex], FindMessageBoxString,
                                 unmanagedMemoryLocation);
                             dialogBoxText = Marshal.PtrToStringUni(unmanagedMemoryLocation);
@@ -269,9 +270,9 @@ namespace VsExt.AutoShelve_IntegrationTests
                             }
 
                             // Check if we have found the right dialog box.
-                            if (String.IsNullOrEmpty(_expectedDialogBoxText) ||
-                                (!String.IsNullOrEmpty(dialogBoxText) &&
-                                 String.Compare(_expectedDialogBoxText, dialogBoxText.Trim(),
+                            if (String.IsNullOrEmpty(_expectedDialogBoxText)
+                                || (!String.IsNullOrEmpty(dialogBoxText)
+                                 && String.Compare(_expectedDialogBoxText, dialogBoxText.Trim(),
                                      StringComparison.OrdinalIgnoreCase) == 0))
                             {
                                 dialogBoxCloseResults[hwndIndex] = dialogCloseResult;
@@ -314,7 +315,7 @@ namespace VsExt.AutoShelve_IntegrationTests
             var sb = new StringBuilder(512);
             NativeMethods.GetClassName(hwnd, sb, sb.Capacity);
 
-            if (sb.ToString().ToLower().Contains("static"))
+            if (sb.ToString().IndexOf("static", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 var windowText = new StringBuilder(2048);
                 NativeMethods.GetWindowText(hwnd, windowText, windowText.Capacity);
@@ -329,10 +330,10 @@ namespace VsExt.AutoShelve_IntegrationTests
 
                         // Since unicode characters are copied check if we are out of the allocated length.
                         // If not add the end terminating zero.
-                        if ((2*stringAsArray.Length) + 1 < 2048)
+                        if ((2 * stringAsArray.Length) + 1 < 2048)
                         {
                             Marshal.Copy(stringAsArray, 0, unmanagedMemoryLocation, stringAsArray.Length);
-                            Marshal.WriteInt32(unmanagedMemoryLocation, 2*stringAsArray.Length, 0);
+                            Marshal.WriteInt32(unmanagedMemoryLocation, 2 * stringAsArray.Length, 0);
                         }
                     }
                     finally
