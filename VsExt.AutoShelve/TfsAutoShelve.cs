@@ -16,8 +16,6 @@ namespace VsExt.AutoShelve
 {
     public class TfsAutoShelve : ISAutoShelve, IAutoShelve, IDisposable
     {
-        private static string _extensionName => Resources.ExtensionName;
-
         private readonly Timer _timer;
         private readonly IServiceProvider _serviceProvider;
 
@@ -212,7 +210,7 @@ namespace VsExt.AutoShelve
                         // Actually create a new Shelveset 
                         var shelveset = new Shelveset(service, shelvesetName, workspace.OwnerName)
                         {
-                            Comment = string.Format("Shelved by {0}. {1} items", _extensionName, numPending)
+                            Comment = string.Format(Resources.ShelvesetComment, VsExtAutoShelvePackage.ExtensionName, numPending)
                         };
                         workspace.Shelve(shelveset, pendingChanges, ShelvingOptions.Replace);
 
@@ -243,7 +241,8 @@ namespace VsExt.AutoShelve
 
         private static IEnumerable<Shelveset> GetPastShelvesets(VersionControlServer service, Workspace workspace, string shelvesetName)
         {
-            var pastShelvesets = service.QueryShelvesets(null, workspace.OwnerName).Where(s => s.Comment?.Contains(_extensionName) == true);
+            var pastShelvesets = service.QueryShelvesets(null, workspace.OwnerName)
+                .Where(s => s.Comment?.Contains(VsExtAutoShelvePackage.ExtensionName) == true);
             if (pastShelvesets?.Any() == true)
             {
                 if (shelvesetName.IsNameSpecificToWorkspace())

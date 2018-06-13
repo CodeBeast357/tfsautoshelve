@@ -98,6 +98,15 @@ namespace VsExt.AutoShelve {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {0} encountered an error..
+        /// </summary>
+        internal static string ErrorMessage {
+            get {
+                return ResourceManager.GetString("ErrorMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to TFS Connection failed.  Fix your connection and source control bindings then restart TFS Auto Shelve..
         /// </summary>
         internal static string ErrorNotConnected {
@@ -112,6 +121,96 @@ namespace VsExt.AutoShelve {
         internal static string ExtensionName {
             get {
                 return ResourceManager.GetString("ExtensionName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} (Running).
+        /// </summary>
+        internal static string MenuTextRunning {
+            get {
+                return ResourceManager.GetString("MenuTextRunning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} (Stopped).
+        /// </summary>
+        internal static string MenuTextStopped {
+            get {
+                return ResourceManager.GetString("MenuTextStopped", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} must be greater than 0..
+        /// </summary>
+        internal static string PositiveNumberError {
+            get {
+                return ResourceManager.GetString("PositiveNumberError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Error - {0} Settings.
+        /// </summary>
+        internal static string SettingsErrorTitle {
+            get {
+                return ResourceManager.GetString("SettingsErrorTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Shelved by {0}. {1} items.
+        /// </summary>
+        internal static string ShelvesetComment {
+            get {
+                return ResourceManager.GetString("ShelvesetComment", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Shelved {0} pending changes to Shelveset Name: {1}.
+        /// </summary>
+        internal static string ShelvesetSuccess {
+            get {
+                return ResourceManager.GetString("ShelvesetSuccess", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to | Maximum Shelvesets: {0} | Deleted: {1}.
+        /// </summary>
+        internal static string ShelvesetSucessPurged {
+            get {
+                return ResourceManager.GetString("ShelvesetSucessPurged", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} paused while debugging..
+        /// </summary>
+        internal static string StatePaused {
+            get {
+                return ResourceManager.GetString("StatePaused", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is running..
+        /// </summary>
+        internal static string StateRunning {
+            get {
+                return ResourceManager.GetString("StateRunning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is stopped..
+        /// </summary>
+        internal static string StateStopped {
+            get {
+                return ResourceManager.GetString("StateStopped", resourceCulture);
             }
         }
     }

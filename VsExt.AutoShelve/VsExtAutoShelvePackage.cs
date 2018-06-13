@@ -30,7 +30,7 @@ namespace VsExt.AutoShelve
     [ProvideAutoLoad(UIContextGuids80.SolutionExists)] // https://msdn.microsoft.com/en-us/library/microsoft.visualstudio.shell.interop.uicontextguids80.aspx
     [ProvideMenuResource("Menus.ctmenu", 1)]
     // This attribute is used to include custom options in the Tools->Options dialog
-    [ProvideOptionPage(typeof(OptionsPageGeneral), "TFS Auto Shelve", "General", 101, 106, true)]
+    [ProvideOptionPage(typeof(OptionsPageGeneral), "TFS Auto Shelve", OptionsPageGeneral.GeneralCategory, 101, 106, true)]
     [ProvideService(typeof(TfsAutoShelve))]
     // This attribute is used to register the information needed to show this package
     // in the Help/About dialog of Visual Studio.
@@ -42,13 +42,15 @@ namespace VsExt.AutoShelve
         private DTE2 _dte;
         private IVsActivityLog _log;
         private OleMenuCommand _menuRunState;
-        private readonly string _extName = Resources.ExtensionName;
-        private readonly string _menuTextRunning = string.Concat(Resources.ExtensionName, " (Running)");
-        private readonly string _menuTextStopped = string.Concat(Resources.ExtensionName, " (Not Running)");
         private OptionsPageGeneral _options;
         private uint _solutionEventsCookie;
         private IVsSolution2 _solutionService;
         private bool _isPaused;
+
+        public static string ExtensionName => Resources.ExtensionName;
+
+        private string _menuTextRunning => string.Format(Resources.MenuTextRunning, ExtensionName);
+        private string _menuTextStopped => string.Format(Resources.MenuTextStopped, ExtensionName);
 
         /// <summary>
         /// Default constructor of the package.
@@ -87,11 +89,10 @@ namespace VsExt.AutoShelve
             {
                 if (e.ShelvesetChangeCount != 0)
                 {
-                    var str = string.Format("Shelved {0} pending change{1} to Shelveset Name: {2}", e.ShelvesetChangeCount,
-                      e.ShelvesetChangeCount != 1 ? "s" : "", e.ShelvesetName);
+                    var str = string.Format(Resources.ShelvesetSuccess, e.ShelvesetChangeCount, e.ShelvesetName);
                     if (e.ShelvesetsPurgeCount > 0)
                     {
-                        str += string.Format(" | Maximum Shelvesets: {0} | Deleted: {1}", _autoShelve.MaximumShelvesets, e.ShelvesetsPurgeCount);
+                        str += string.Format(Resources.ShelvesetSucessPurged, _autoShelve.MaximumShelvesets, e.ShelvesetsPurgeCount);
                     }
                     WriteToStatusBar(str);
                     WriteLineToOutputWindow(str);
@@ -124,11 +125,15 @@ namespace VsExt.AutoShelve
             string str1;
             if (_isPaused)
             {
-                str1 = string.Format("{0} paused while Debugging", _extName);
+                str1 = string.Format(Resources.StatePaused, ExtensionName);
+            }
+            else if (_autoShelve.IsRunning)
+            {
+                str1 = string.Format(Resources.StateRunning, ExtensionName);
             }
             else
             {
-                str1 = string.Format("{0} is{1} running", _extName, _autoShelve.IsRunning ? string.Empty : " not");
+                str1 = string.Format(Resources.StateStopped, ExtensionName);
             }
             WriteToStatusBar(str1);
             WriteLineToOutputWindow(str1);
@@ -327,7 +332,7 @@ namespace VsExt.AutoShelve
 
         private void WriteException(Exception ex)
         {
-            WriteToStatusBar(string.Concat(_extName, " encountered an error."));
+            WriteToStatusBar(string.Format(Resources.ErrorMessage, ExtensionName));
             WriteLineToOutputWindow(ex.Message);
             WriteLineToOutputWindow(ex.StackTrace);
             WriteToActivityLog(ex.Message, ex.StackTrace);

@@ -130,10 +130,43 @@
   <data name="DefaultShelvetsetName" xml:space="preserve">
     <value>Auto {0}</value>
   </data>
+  <data name="ErrorMessage" xml:space="preserve">
+    <value>{0} encountered an error.</value>
+  </data>
   <data name="ErrorNotConnected" xml:space="preserve">
     <value>TFS Connection failed.  Fix your connection and source control bindings then restart TFS Auto Shelve.</value>
   </data>
   <data name="ExtensionName" xml:space="preserve">
     <value>TFS Auto Shelve</value>
+  </data>
+  <data name="MenuTextRunning" xml:space="preserve">
+    <value>{0} (Running)</value>
+  </data>
+  <data name="MenuTextStopped" xml:space="preserve">
+    <value>{0} (Stopped)</value>
+  </data>
+  <data name="PositiveNumberError" xml:space="preserve">
+    <value>{0} must be greater than 0.</value>
+  </data>
+  <data name="SettingsErrorTitle" xml:space="preserve">
+    <value>Error - {0} Settings</value>
+  </data>
+  <data name="ShelvesetComment" xml:space="preserve">
+    <value>Shelved by {0}. {1} items</value>
+  </data>
+  <data name="ShelvesetSuccess" xml:space="preserve">
+    <value>Shelved {0} pending changes to Shelveset Name: {1}</value>
+  </data>
+  <data name="ShelvesetSucessPurged" xml:space="preserve">
+    <value>| Maximum Shelvesets: {0} | Deleted: {1}</value>
+  </data>
+  <data name="StatePaused" xml:space="preserve">
+    <value>{0} paused while debugging.</value>
+  </data>
+  <data name="StateRunning" xml:space="preserve">
+    <value>{0} is running.</value>
+  </data>
+  <data name="StateStopped" xml:space="preserve">
+    <value>{0} is stopped.</value>
   </data>
 </root>
