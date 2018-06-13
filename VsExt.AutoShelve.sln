@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26014.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VsExt.AutoShelve_IntegrationTests", "VsExt.AutoShelve\VsExt.AutoShelve_IntegrationTests\VsExt.AutoShelve_IntegrationTests.csproj", "{C96D2DFF-31F0-4752-8BA6-67AF02D0C589}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VsExt.AutoShelve_IntegrationTests", "VsExt.AutoShelve_IntegrationTests\VsExt.AutoShelve_IntegrationTests.csproj", "{C96D2DFF-31F0-4752-8BA6-67AF02D0C589}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{923D33C5-79C8-4361-AFDC-C5846B0DEE34}"
 	ProjectSection(SolutionItems) = preProject
@@ -13,7 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		UnitTests.testsettings = UnitTests.testsettings
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VsExt.AutoShelve_UnitTests", "VsExt.AutoShelve\VsExt.AutoShelve_UnitTests\VsExt.AutoShelve_UnitTests.csproj", "{EDF5B82C-2F3F-4C41-8BBE-C3265873E1A7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VsExt.AutoShelve_UnitTests", "VsExt.AutoShelve_UnitTests\VsExt.AutoShelve_UnitTests.csproj", "{EDF5B82C-2F3F-4C41-8BBE-C3265873E1A7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VsExt.AutoShelve", "VsExt.AutoShelve\VsExt.AutoShelve.csproj", "{7CF655F8-39FA-4797-A835-9867F154857F}"
 EndProject
@@ -43,5 +43,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FD81A19D-4420-4D60-967E-6EDBFDADD18C}
 	EndGlobalSection
 EndGlobal
