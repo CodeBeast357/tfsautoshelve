@@ -80,15 +80,12 @@ namespace VsExt.AutoShelve.IO
         protected override void OnApply(PageApplyEventArgs e)
         {
             base.OnApply(e);
-            bool flag = OnOptionsChanged == null;
-            if (flag) return;
-            var optionsEventArg = new OptionsChangedEventArgs(
+            OnOptionsChanged?.Invoke(this, new OptionsChangedEventArgs(
                 pauseWhileDebugging: PauseWhileDebugging,
                 interval: Interval,
                 maximumShelvesets: MaximumShelvesets,
                 outputPane: OutputPane,
-                shelvesetName: ShelvesetName);
-            OnOptionsChanged(this, optionsEventArg);
+                shelvesetName: ShelvesetName));
         }
 
         public event EventHandler<OptionsChangedEventArgs> OnOptionsChanged;
