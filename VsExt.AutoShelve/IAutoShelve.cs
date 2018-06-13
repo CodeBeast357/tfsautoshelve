@@ -16,7 +16,7 @@ namespace VsExt.AutoShelve
         bool IsRunning { get; }
         ushort MaximumShelvesets { get; set; }
         string ShelvesetName { get; set; }
-        double TimerInterval { get; set; }
+        double Interval { get; set; }
 
         void CreateShelveset(bool force = false);
         void Start();

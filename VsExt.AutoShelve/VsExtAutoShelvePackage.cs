@@ -207,7 +207,7 @@ namespace VsExt.AutoShelve
                 // Property Initialization
                 _autoShelve.MaximumShelvesets = _options.MaximumShelvesets;
                 _autoShelve.ShelvesetName = _options.ShelvesetName;
-                _autoShelve.TimerInterval = _options.TimerSaveInterval;
+                _autoShelve.Interval = _options.Interval;
             }
             AttachEvents();
         }
@@ -299,7 +299,7 @@ namespace VsExt.AutoShelve
             {
                 _autoShelve.MaximumShelvesets = e.MaximumShelvesets;
                 _autoShelve.ShelvesetName = e.ShelvesetName;
-                _autoShelve.TimerInterval = e.Interval;
+                _autoShelve.Interval = e.Interval;
             }
         }
 

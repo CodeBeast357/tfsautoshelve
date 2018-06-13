@@ -36,7 +36,7 @@ namespace VsExt.AutoShelve.IO
         [Category(GeneralCategory)]
         [DisplayName("Interval")]
         [Description("The interval (in minutes) between shelvesets when running.")]
-        public double TimerSaveInterval
+        public double Interval
         {
             get => _interval;
             set
@@ -44,7 +44,7 @@ namespace VsExt.AutoShelve.IO
                 if (value <= 0)
                 {
                     WinFormsHelper.ShowMessageBox(
-                        string.Format(Resources.PositiveNumberError, nameof(TimerSaveInterval)),
+                        string.Format(Resources.PositiveNumberError, nameof(Interval)),
                         string.Format(Resources.SettingsErrorTitle, VsExtAutoShelvePackage.ExtensionName),
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error);
@@ -73,7 +73,7 @@ namespace VsExt.AutoShelve.IO
             OutputPane = VsExtAutoShelvePackage.ExtensionName;
             MaximumShelvesets = 0;
             ShelvesetName = Resources.DefaultShelvetsetName;
-            TimerSaveInterval = 5;
+            Interval = 5;
             PauseWhileDebugging = false;
         }
 
@@ -84,7 +84,7 @@ namespace VsExt.AutoShelve.IO
             if (flag) return;
             var optionsEventArg = new OptionsChangedEventArgs(
                 pauseWhileDebugging: PauseWhileDebugging,
-                interval: TimerSaveInterval,
+                interval: Interval,
                 maximumShelvesets: MaximumShelvesets,
                 outputPane: OutputPane,
                 shelvesetName: ShelvesetName);

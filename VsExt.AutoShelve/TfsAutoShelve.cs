@@ -48,7 +48,7 @@ namespace VsExt.AutoShelve
 
         public string ShelvesetName { get; set; }
 
-        public double TimerInterval { get; set; }
+        public double Interval { get; set; }
 
         public void CreateShelveset(bool force = false)
         {
@@ -275,7 +275,7 @@ namespace VsExt.AutoShelve
 
         public void Start()
         {
-            _timer.Change(TimeSpan.FromMinutes(TimerInterval), TimeSpan.FromMinutes(TimerInterval));
+            _timer.Change(TimeSpan.FromMinutes(Interval), TimeSpan.FromMinutes(Interval));
             IsRunning = true;
             Started?.Invoke(this, System.EventArgs.Empty);
         }
