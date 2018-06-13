@@ -43,7 +43,7 @@ namespace VsExt.AutoShelve.IO
             {
                 if (value <= 0)
                 {
-                    WinFormsHelper.ShowMessageBox(
+                    MessageBox.Show(
                         string.Format(Resources.PositiveNumberError, nameof(Interval)),
                         string.Format(Resources.SettingsErrorTitle, VsExtAutoShelvePackage.ExtensionName),
                         MessageBoxButtons.OK,

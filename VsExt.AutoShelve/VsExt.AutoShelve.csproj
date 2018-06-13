@@ -146,7 +146,6 @@
     <Compile Include="TfsExtensions.cs" />
     <Compile Include="VsExtAutoShelvePackage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="IO\WinFormsHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources.resx">
